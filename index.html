@@ -1,198 +1,81 @@
-import React, { useState, useEffect } from 'react';
-import { CheckCircle, Circle, Calendar, ChevronDown, ChevronUp, RefreshCw, Cloud } from 'lucide-react';
-import { initializeApp } from 'firebase/app';
-import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
-import { getDatabase, ref, onValue, set } from 'firebase/database';
-
-// 1. SUA CONFIGURAÇÃO REAL DO FIREBASE (SUBSTITUÍDA COM SUCESSO)
-const firebaseConfig = {
-  apiKey: "AIzaSyD9sYzRQK0yJtTK9aY_ugev6FiTYtlsZEI",
-  authDomain: "meu-app-escolar-568ef.firebaseapp.com",
-  projectId: "meu-app-escolar-568ef",
-  storageBucket: "meu-app-escolar-568ef.firebasestorage.app",
-  messagingSenderId: "251193660931",
-  appId: "1:251193660931:web:8fd8faa0598dc1a36aa036",
-  measurementId: "G-2WK4QGPPW8"
-};
-
-// Inicialização
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getDatabase(app);
-
-// Dados iniciais
-const initialSchedule = [
-  { id: 1, title: "Semana 1", items: [
-      { id: '1-1', dia: 'Segunda', periodo: 'Tarde', prof: 'Tereza', disc: 'Matemática', turma: '3ºA', feito: false },
-      { id: '1-2', dia: 'Quarta', periodo: 'Tarde', prof: 'Alessandra', disc: 'Física', turma: '3ºA', feito: false },
-      { id: '1-3', dia: 'Quinta', periodo: 'Manhã', prof: 'Lucas', disc: 'Robótica', turma: '8ºA', feito: false },
-      { id: '1-4', dia: 'Sexta', periodo: 'Tarde', prof: 'Miguel', disc: 'Pensam. Lógico', turma: '6ºA', feito: false },
-  ]},
-  { id: 2, title: "Semana 2", items: [
-      { id: '2-1', dia: 'Segunda', periodo: 'Tarde', prof: 'Michele', disc: 'Empreended.', turma: '9ºA', feito: false },
-      { id: '2-2', dia: 'Quarta', periodo: 'Tarde', prof: 'Cristiane P.', disc: 'Matemática', turma: '9ºA', feito: false },
-      { id: '2-3', dia: 'Quinta', periodo: 'Tarde', prof: 'Keila', disc: 'Matemática', turma: '7ºB', feito: false },
-      { id: '2-4', dia: 'Sexta', periodo: 'Tarde', prof: 'Cris Luz / Nilton', disc: 'Rec. Aprendiz.', turma: '9ºA', feito: false },
-  ]},
-  { id: 3, title: "Semana 3", items: [
-      { id: '3-1', dia: 'Segunda', periodo: 'Tarde', prof: 'Tereza', disc: 'Matemática', turma: '3ºA', feito: false },
-      { id: '3-2', dia: 'Quarta', periodo: 'Tarde', prof: 'Cristiane Luz', disc: 'Ed. Financeira', turma: '1ºA', feito: false },
-      { id: '3-3', dia: 'Quinta', periodo: 'Manhã', prof: 'Lucas', disc: 'Robótica', turma: '8ºA', feito: false },
-      { id: '3-4', dia: 'Quinta', periodo: 'Tarde', prof: 'Taina', disc: 'Matemática', turma: '2ºA', feito: false },
-  ]},
-  { id: 4, title: "Semana 4", items: [
-      { id: '4-1', dia: 'Segunda', periodo: 'Tarde', prof: 'Michele', disc: 'Empreended.', turma: '9ºA', feito: false },
-      { id: '4-2', dia: 'Quarta', periodo: 'Tarde', prof: 'Alessandra', disc: 'Física', turma: '3ºA', feito: false },
-      { id: '4-3', dia: 'Quinta', periodo: 'Tarde', prof: 'Keila', disc: 'Matemática', turma: '7ºB', feito: false },
-      { id: '4-4', dia: 'Sexta', periodo: 'Tarde', prof: 'Miguel', disc: 'Pensam. Lógico', turma: '6ºA', feito: false },
-  ]},
-  { id: 5, title: "Semana 5", items: [
-      { id: '5-1', dia: 'Segunda', periodo: 'Tarde', prof: 'Cristiane Luz', disc: 'Ed. Financeira', turma: '7ºA', feito: false },
-      { id: '5-2', dia: 'Quarta', periodo: 'Tarde', prof: 'Cristiane P.', disc: 'Matemática', turma: '9ºA', feito: false },
-      { id: '5-3', dia: 'Quinta', periodo: 'Tarde', prof: 'Taina', disc: 'Matemática', turma: '2ºA', feito: false },
-      { id: '5-4', dia: 'Sexta', periodo: 'Tarde', prof: 'Cris Luz / Nilton', disc: 'Rec. Aprendiz.', turma: '9ºA', feito: false },
-  ]},
-  { id: 6, title: "Semana 6", items: [
-      { id: '6-1', dia: 'Segunda', periodo: 'Tarde', prof: 'Tereza', disc: 'Matemática', turma: '3ºA', feito: false },
-      { id: '6-2', dia: 'Quarta', periodo: 'Tarde', prof: 'Alessandra', disc: 'Física', turma: '3ºA', feito: false },
-      { id: '6-3', dia: 'Quinta', periodo: 'Manhã', prof: 'Lucas', disc: 'Robótica', turma: '8ºA', feito: false },
-      { id: '6-4', dia: 'Sexta', periodo: 'Tarde', prof: 'Miguel', disc: 'Pensam. Lógico', turma: '6ºA', feito: false },
-  ]},
-  { id: 7, title: "Semana 7", items: [
-      { id: '7-1', dia: 'Segunda', periodo: 'Tarde', prof: 'Michele', disc: 'Empreended.', turma: '9ºA', feito: false },
-      { id: '7-2', dia: 'Quarta', periodo: 'Tarde', prof: 'Cristiane P.', disc: 'Matemática', turma: '9ºA', feito: false },
-      { id: '7-3', dia: 'Quinta', periodo: 'Tarde', prof: 'Keila', disc: 'Matemática', turma: '7ºB', feito: false },
-      { id: '7-4', dia: 'Sexta', periodo: 'Tarde', prof: 'Cris Luz / Nilton', disc: 'Rec. Aprendiz.', turma: '9ºA', feito: false },
-  ]},
-  { id: 8, title: "Semana 8", items: [
-      { id: '8-1', dia: 'Segunda', periodo: 'Tarde', prof: 'Tereza', disc: 'Matemática', turma: '3ºA', feito: false },
-      { id: '8-2', dia: 'Quarta', periodo: 'Tarde', prof: 'Cristiane Luz', disc: 'Ed. Financeira', turma: '1ºA', feito: false },
-      { id: '8-3', dia: 'Quinta', periodo: 'Manhã', prof: 'Lucas', disc: 'Robótica', turma: '8ºA', feito: false },
-      { id: '8-4', dia: 'Quinta', periodo: 'Tarde', prof: 'Taina', disc: 'Matemática', turma: '2ºA', feito: false },
-  ]},
-  { id: 9, title: "Semana 9", items: [
-      { id: '9-1', dia: 'Segunda', periodo: 'Tarde', prof: 'Michele', disc: 'Empreended.', turma: '9ºA', feito: false },
-      { id: '9-2', dia: 'Quarta', periodo: 'Tarde', prof: 'Alessandra', disc: 'Física', turma: '3ºA', feito: false },
-      { id: '9-3', dia: 'Quinta', periodo: 'Tarde', prof: 'Keila', disc: 'Matemática', turma: '7ºB', feito: false },
-      { id: '9-4', dia: 'Sexta', periodo: 'Tarde', prof: 'Miguel', disc: 'Pensam. Lógico', turma: '6ºA', feito: false },
-  ]},
-  { id: 10, title: "Semana 10", items: [
-      { id: '10-1', dia: 'Segunda', periodo: 'Tarde', prof: 'Cristiane Luz', disc: 'Ed. Financeira', turma: '7ºA', feito: false },
-      { id: '10-2', dia: 'Quarta', periodo: 'Tarde', prof: 'Cristiane P.', disc: 'Matemática', turma: '9ºA', feito: false },
-      { id: '10-3', dia: 'Quinta', periodo: 'Tarde', prof: 'Taina', disc: 'Matemática', turma: '2ºA', feito: false },
-      { id: '10-4', dia: 'Sexta', periodo: 'Tarde', prof: 'Cris Luz / Nilton', disc: 'Rec. Aprendiz.', turma: '9ºA', feito: false },
-  ]},
-  { id: 11, title: "Semana 11", items: [
-      { id: '11-1', dia: 'Segunda', periodo: 'Tarde', prof: 'Tereza', disc: 'Matemática', turma: '3ºA', feito: false },
-      { id: '11-2', dia: 'Quarta', periodo: 'Tarde', prof: 'Alessandra', disc: 'Física', turma: '3ºA', feito: false },
-      { id: '11-3', dia: 'Quinta', periodo: 'Manhã', prof: 'Lucas', disc: 'Robótica', turma: '8ºA', feito: false },
-      { id: '11-4', dia: 'Sexta', periodo: 'Tarde', prof: 'Miguel', disc: 'Pensam. Lógico', turma: '6ºA', feito: false },
-  ]},
-  { id: 12, title: "Semana 12", items: [
-      { id: '12-1', dia: 'Segunda', periodo: 'Tarde', prof: 'Michele', disc: 'Empreended.', turma: '9ºA', feito: false },
-      { id: '12-2', dia: 'Quarta', periodo: 'Tarde', prof: 'Cristiane P.', disc: 'Matemática', turma: '9ºA', feito: false },
-      { id: '12-3', dia: 'Quinta', periodo: 'Tarde', prof: 'Keila', disc: 'Matemática', turma: '7ºB', feito: false },
-      { id: '12-4', dia: 'Sexta', periodo: 'Tarde', prof: 'Cris Luz / Nilton', disc: 'Rec. Aprendiz.', turma: '9ºA', feito: false },
-  ]},
-];
-
-export default function App() {
-  const [schedule, setSchedule] = useState(initialSchedule);
-  const [expandedWeek, setExpandedWeek] = useState(1);
-  const [loading, setLoading] = useState(true);
-
-  // Sincronização
-  useEffect(() => {
-    signInAnonymously(auth).then(() => {
-      const scheduleRef = ref(db, 'schedule');
-      onValue(scheduleRef, (snapshot) => {
-        const data = snapshot.val();
-        if (data) {
-          setSchedule(data);
-        } else {
-          set(scheduleRef, initialSchedule);
-        }
-        setLoading(false);
-      });
-    });
-  }, []);
-
-  const toggleItem = (weekId, itemId) => {
-    const newSchedule = schedule.map(week => {
-      if (week.id === weekId) {
-        return {
-          ...week,
-          items: week.items.map(item => 
-            item.id === itemId ? { ...item, feito: !item.feito } : item
-          )
-        };
-      }
-      return week;
-    });
-    setSchedule(newSchedule);
-    set(ref(db, 'schedule'), newSchedule);
-  };
-
-  const totalTasks = schedule.reduce((acc, week) => acc + week.items.length, 0);
-  const completedTasks = schedule.reduce((acc, week) => acc + week.items.filter(i => i.feito).length, 0);
-  const progress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
-
-  if (loading) return <div className="flex items-center justify-center min-h-screen">Carregando dados reais...</div>;
-
-  return (
-    <div className="min-h-screen bg-gray-50 text-slate-800 font-sans">
-      <div className="bg-blue-900 text-white p-6 sticky top-0 z-10 shadow-lg">
-        <div className="max-w-4xl mx-auto">
-          <div className="flex justify-between items-center mb-4">
-            <div>
-              <h1 className="text-2xl font-bold flex items-center gap-2">
-                <Calendar className="w-6 h-6" /> Painel de Observações
-              </h1>
-              <div className="text-blue-200 text-sm mt-1">C.E. Prof. William Madi • <span className="text-green-400 font-bold">● Live Database</span></div>
-            </div>
-            <div className="text-right">
-              <div className="text-3xl font-bold">{progress}%</div>
-              <div className="text-xs text-blue-200">Progresso Geral</div>
-            </div>
-          </div>
-          <div className="w-full bg-blue-950 rounded-full h-2.5">
-            <div className="bg-green-400 h-2.5 rounded-full transition-all" style={{ width: `${progress}%` }}></div>
-          </div>
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel de Observações - Colégio Madi</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
+</head>
+<body class="bg-gray-50 text-slate-800">
+    <div id="root">
+        <div class="bg-blue-900 text-white p-6 shadow-lg">
+            <h1 class="text-2xl font-bold">Painel de Observações</h1>
+            <p class="text-blue-200">Carregando dados reais...</p>
         </div>
-      </div>
-
-      <div className="max-w-4xl mx-auto p-4 space-y-4">
-        {schedule.map((week) => {
-          const weekCompleted = week.items.every(i => i.feito);
-          return (
-            <div key={week.id} className={`bg-white rounded-lg shadow-sm border ${weekCompleted ? 'border-green-200 bg-green-50' : 'border-gray-200'}`}>
-              <div className="p-4 flex items-center justify-between cursor-pointer" onClick={() => setExpandedWeek(expandedWeek === week.id ? null : week.id)}>
-                <div className="flex items-center gap-3">
-                  <div className={`w-2 h-2 rounded-full ${weekCompleted ? 'bg-green-500' : 'bg-blue-600'}`}></div>
-                  <h3 className="font-bold">{week.title}</h3>
-                </div>
-                {expandedWeek === week.id ? <ChevronUp /> : <ChevronDown />}
-              </div>
-              {expandedWeek === week.id && (
-                <div className="border-t p-2">
-                  {week.items.map((item) => (
-                    <div key={item.id} onClick={() => toggleItem(week.id, item.id)} className={`flex items-center justify-between p-3 mb-2 rounded cursor-pointer ${item.feito ? 'bg-green-100' : 'bg-white border hover:bg-gray-50'}`}>
-                      <div className="flex items-center gap-3">
-                        {item.feito ? <CheckCircle className="text-green-600" /> : <Circle className="text-gray-300" />}
-                        <div>
-                          <p className={`font-medium ${item.feito ? 'line-through text-green-800' : ''}`}>{item.prof}</p>
-                          <p className="text-xs text-gray-500">{item.dia} • {item.disc} • {item.turma}</p>
-                        </div>
-                      </div>
-                      <div className="text-xs bg-gray-100 px-2 py-1 rounded">{item.periodo}</div>
-                    </div>
-                  ))}
-                </div>
-              )}
+        <div class="p-4 max-w-4xl mx-auto" id="lista-semanas">
             </div>
-          );
-        })}
-      </div>
     </div>
-  );
-}
+
+    <script>
+        // SUA CONFIGURAÇÃO REAL DO FIREBASE
+        const firebaseConfig = {
+          apiKey: "AIzaSyD9sYzRQK0yJtTK9aY_ugev6FiTYtlsZEI",
+          authDomain: "meu-app-escolar-568ef.firebaseapp.com",
+          projectId: "meu-app-escolar-568ef",
+          storageBucket: "meu-app-escolar-568ef.firebasestorage.app",
+          messagingSenderId: "251193660931",
+          appId: "1:251193660931:web:8fd8faa0598dc1a36aa036"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        // Dados Iniciais
+        const initialSchedule = [
+            { id: 1, title: "Semana 1", items: [
+                { id: '1-1', dia: 'Segunda', prof: 'Tereza', disc: 'Matemática', turma: '3ºA', feito: false },
+                { id: '1-2', dia: 'Quarta', prof: 'Alessandra', disc: 'Física', turma: '3ºA', feito: false }
+            ]}
+        ];
+
+        function render() {
+            const container = document.getElementById('lista-semanas');
+            db.ref('schedule').on('value', (snapshot) => {
+                const data = snapshot.val() || initialSchedule;
+                container.innerHTML = data.map(week => `
+                    <div class="bg-white p-4 rounded-lg shadow mb-4 border-l-4 border-blue-600">
+                        <h2 class="font-bold text-lg mb-2">${week.title}</h2>
+                        ${week.items.map(item => `
+                            <div class="flex items-center justify-between p-2 border-b last:border-0">
+                                <div>
+                                    <p class="font-medium ${item.feito ? 'line-through text-gray-400' : ''}">${item.prof}</p>
+                                    <p class="text-xs text-gray-500">${item.dia} • ${item.disc} • ${item.turma}</p>
+                                </div>
+                                <input type="checkbox" ${item.feito ? 'checked' : ''} 
+                                    class="w-6 h-6" 
+                                    onclick="toggle('${week.id}', '${item.id}')">
+                            </div>
+                        `).join('')}
+                    </div>
+                `).join('');
+            });
+        }
+
+        window.toggle = (weekId, itemId) => {
+            db.ref('schedule').once('value').then(snap => {
+                let data = snap.val();
+                data.forEach(w => {
+                    if(w.id == weekId) {
+                        w.items.forEach(i => { if(i.id == itemId) i.feito = !i.feito; });
+                    }
+                });
+                db.ref('schedule').set(data);
+            });
+        };
+
+        render();
+    </script>
+</body>
+</html>
